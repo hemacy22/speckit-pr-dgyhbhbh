@@ -1,0 +1,12 @@
+# Default owners
+*                                   @hp-org/platform-owners
+
+# Backend / API
+api/**                              @hp-org/backend
+openapi/**                          @hp-org/api-standards
+
+# Frontend
+web/**                              @hp-org/frontend-a11y
+
+# Workflows
+.github/workflows/**                @hp-org/devops
