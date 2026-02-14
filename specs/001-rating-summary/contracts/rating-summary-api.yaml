@@ -1,0 +1,241 @@
+openapi: 3.1.0
+
+info:
+  title: Product Rating Summary API
+  description: |
+    API endpoint for fetching aggregated rating statistics for products.
+    
+    **Feature**: Product Rating Summary Display
+    **Branch**: 001-rating-summary
+    **Performance SLO**: < 150ms p95 response time
+  version: 1.0.0
+  contact:
+    name: API Support
+  license:
+    name: MIT
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: https://api-staging.example.com/v1
+    description: Staging server
+  - url: http://localhost:3000/v1
+    description: Local development server
+
+paths:
+  /products/{id}/rating-summary:
+    get:
+      summary: Get product rating summary
+      description: |
+        Retrieves aggregated rating statistics for a specific product, including:
+        - Average rating (0.0-5.0 scale)
+        - Total count of ratings
+        
+        **Caching**: Response cached for 60 seconds via Redis
+        **Performance**: Target response time < 150ms (p95)
+        **Zero Ratings**: Returns `{ "average": 0, "count": 0 }` when no ratings exist
+        
+      operationId: getRatingSummary
+      tags:
+        - Ratings
+      
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the product
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+            example: 12345
+          examples:
+            standard:
+              value: 12345
+              summary: Standard product ID
+            single_digit:
+              value: 1
+              summary: Single digit product ID
+      
+      responses:
+        '200':
+          description: Successfully retrieved rating summary
+          headers:
+            X-Cache-Status:
+              description: Indicates whether response was served from cache
+              schema:
+                type: string
+                enum: [HIT, MISS]
+              example: HIT
+            X-Response-Time:
+              description: Server-side response time in milliseconds
+              schema:
+                type: integer
+                format: int32
+              example: 45
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingSummary'
+              examples:
+                with_ratings:
+                  summary: Product with existing ratings
+                  value:
+                    average: 4.5
+                    count: 234
+                no_ratings:
+                  summary: Product with no ratings yet
+                  value:
+                    average: 0
+                    count: 0
+                perfect_rating:
+                  summary: Product with perfect 5.0 rating
+                  value:
+                    average: 5.0
+                    count: 42
+                single_rating:
+                  summary: Product with single rating
+                  value:
+                    average: 3.5
+                    count: 1
+        
+        '400':
+          description: Invalid product ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid_format:
+                  summary: Product ID is not a valid integer
+                  value:
+                    error: "Invalid product ID format"
+                    message: "Product ID must be a positive integer"
+                    code: "INVALID_PRODUCT_ID"
+        
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found:
+                  summary: Product does not exist
+                  value:
+                    error: "Product not found"
+                    message: "No product exists with ID 99999"
+                    code: "PRODUCT_NOT_FOUND"
+        
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                database_error:
+                  summary: Database connection failure
+                  value:
+                    error: "Internal server error"
+                    message: "An unexpected error occurred while processing your request"
+                    code: "INTERNAL_ERROR"
+        
+        '503':
+          description: Service temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                cache_unavailable:
+                  summary: Redis cache unavailable (graceful degradation)
+                  value:
+                    error: "Service temporarily degraded"
+                    message: "Cache unavailable, responses may be slower"
+                    code: "CACHE_UNAVAILABLE"
+
+components:
+  schemas:
+    RatingSummary:
+      type: object
+      required:
+        - average
+        - count
+      properties:
+        average:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 5.0
+          description: |
+            Average rating for the product on a 0.0-5.0 scale.
+            Returns 0.0 when no ratings exist.
+          example: 4.5
+        count:
+          type: integer
+          format: int64
+          minimum: 0
+          description: |
+            Total number of ratings submitted for this product.
+            Returns 0 when no ratings exist.
+          example: 234
+      description: |
+        Aggregated rating statistics for a product.
+        
+        **Business Rules**:
+        - When count = 0, average MUST be 0.0
+        - Average is rounded to 1 decimal place
+        - Count includes all ratings regardless of rating value
+      example:
+        average: 4.5
+        count: 234
+    
+    Error:
+      type: object
+      required:
+        - error
+        - message
+        - code
+      properties:
+        error:
+          type: string
+          description: Human-readable error summary
+          example: "Invalid product ID format"
+        message:
+          type: string
+          description: Detailed error message with actionable guidance
+          example: "Product ID must be a positive integer"
+        code:
+          type: string
+          description: Machine-readable error code for client handling
+          enum:
+            - INVALID_PRODUCT_ID
+            - PRODUCT_NOT_FOUND
+            - INTERNAL_ERROR
+            - CACHE_UNAVAILABLE
+          example: "INVALID_PRODUCT_ID"
+        details:
+          type: object
+          description: Optional additional error context
+          additionalProperties: true
+          example:
+            field: "id"
+            received: "abc123"
+            expected: "integer"
+      description: Standard error response format
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for rate limiting and abuse prevention (if implemented)
+
+security:
+  - ApiKeyAuth: []
+  - {}  # Public access also allowed
+
+tags:
+  - name: Ratings
+    description: Product rating and review aggregation endpoints
