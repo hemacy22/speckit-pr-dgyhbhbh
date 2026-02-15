@@ -1,0 +1,359 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+# Least-privilege permissions as per constitution requirement
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  backend-unit-tests:
+    name: Backend Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        working-directory: ./backend
+        run: npm run test:unit -- --coverage --coverageReporters=json-summary
+
+      - name: Check coverage threshold (80% required)
+        working-directory: ./backend
+        run: |
+          COVERAGE=$(node -p "require('./coverage/coverage-summary.json').total.lines.pct")
+          echo "Coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "❌ Coverage $COVERAGE% is below 80% threshold"
+            exit 1
+          fi
+          echo "✅ Coverage $COVERAGE% meets 80% threshold"
+
+  backend-contract-tests:
+    name: Backend Contract Tests (OpenAPI Compliance)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run contract tests
+        working-directory: ./backend
+        run: npm run test:contract
+
+  backend-integration-tests:
+    name: Backend Integration Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: ratings_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/ratings_test
+      REDIS_URL: redis://localhost:6379
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run Prisma migrations
+        working-directory: ./backend
+        run: npx prisma migrate deploy
+
+      - name: Seed test database
+        working-directory: ./backend
+        run: npx prisma db seed
+
+      - name: Run integration tests
+        working-directory: ./backend
+        run: npm run test:integration
+
+  frontend-component-tests:
+    name: Frontend Component Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run component tests
+        working-directory: ./frontend
+        run: npm test -- --coverage --watchAll=false
+
+      - name: Check coverage threshold (80% required)
+        working-directory: ./frontend
+        run: |
+          COVERAGE=$(node -p "require('./coverage/coverage-summary.json').total.lines.pct")
+          echo "Coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "❌ Coverage $COVERAGE% is below 80% threshold"
+            exit 1
+          fi
+          echo "✅ Coverage $COVERAGE% meets 80% threshold"
+
+  frontend-e2e-tests:
+    name: Frontend E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: ratings_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/ratings_test
+      REDIS_URL: redis://localhost:6379
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: ./frontend
+        run: npx playwright install --with-deps
+
+      - name: Run Prisma migrations
+        working-directory: ./backend
+        run: npx prisma migrate deploy
+
+      - name: Seed test database
+        working-directory: ./backend
+        run: npx prisma db seed
+
+      - name: Start backend server
+        working-directory: ./backend
+        run: npm run dev &
+
+      - name: Wait for backend
+        run: npx wait-on http://localhost:3000/health --timeout 30000
+
+      - name: Run E2E tests
+        working-directory: ./frontend
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 30
+
+  openapi-lint:
+    name: OpenAPI Lint (Zero Errors Required)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Redocly CLI
+        run: npm install -g @redocly/cli
+
+      - name: Lint OpenAPI specification
+        working-directory: ./backend
+        run: |
+          redocly lint openapi/rating-summary-api.yaml --format=stylish
+          if [ $? -ne 0 ]; then
+            echo "❌ OpenAPI lint errors detected"
+            exit 1
+          fi
+          echo "✅ OpenAPI specification is valid"
+
+  accessibility-tests:
+    name: Accessibility Tests (axe - Zero Critical/Serious Violations)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run accessibility tests with axe
+        working-directory: ./frontend
+        run: npm run test:a11y
+
+      - name: Verify zero critical/serious violations
+        working-directory: ./frontend
+        run: |
+          if grep -i "critical\|serious" test-results/a11y-results.json 2>/dev/null; then
+            echo "❌ Critical or serious accessibility violations found"
+            exit 1
+          fi
+          echo "✅ No critical or serious accessibility violations"
+
+  codeql-security-scan:
+    name: CodeQL Security Scan (No New High/Critical Issues)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: typescript, javascript
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:typescript"
+
+  # Summary job that requires all checks to pass
+  ci-success:
+    name: All CI Checks Passed
+    runs-on: ubuntu-latest
+    needs:
+      - backend-unit-tests
+      - backend-contract-tests
+      - backend-integration-tests
+      - frontend-component-tests
+      - frontend-e2e-tests
+      - openapi-lint
+      - accessibility-tests
+      - codeql-security-scan
+    
+    steps:
+      - name: All checks passed
+        run: |
+          echo "✅ All CI checks passed successfully"
+          echo "✅ Backend unit tests (80% coverage)"
+          echo "✅ Backend contract tests (OpenAPI compliance)"
+          echo "✅ Backend integration tests"
+          echo "✅ Frontend component tests (80% coverage)"
+          echo "✅ Frontend E2E tests"
+          echo "✅ OpenAPI lint (zero errors)"
+          echo "✅ Accessibility tests (zero critical/serious violations)"
+          echo "✅ CodeQL security scan"
