@@ -1,0 +1,15 @@
+# Code ownership assignments for speckit-pr-demo
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Backend team owns all backend code
+/backend/ @backend-team
+
+# Frontend team owns all frontend code  
+/frontend/ @frontend-team
+
+# Specs require approval from both teams
+/specs/ @backend-team @frontend-team
+
+# Constitution and workflow require leadership approval
+/.specify/ @engineering-leads
+/CONSTITUTION.md @engineering-leads

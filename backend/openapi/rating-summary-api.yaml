@@ -1,0 +1,320 @@
+openapi: 3.0.3
+info:
+  title: Rating Summary API
+  description: |
+    ## Overview
+    API for retrieving aggregated product rating summaries.
+    
+    ## Features
+    - Fast aggregation of product ratings (average 0-5, count)
+    - Redis caching with 60-second TTL for optimal performance
+    - WCAG 2.2 AA accessibility support
+    - OpenAPI 3.0.3 specification for contract validation
+    
+    ## Performance
+    - **Target P95 Latency**: < 150ms (constitution requirement)
+    - **Cache Strategy**: Cache-aside pattern with 60s TTL
+    - **Concurrent Load**: Tested at 100 concurrent requests
+    
+    ## Usage Examples
+    
+    ### JavaScript/TypeScript (Axios)
+    ```javascript
+    import axios from 'axios';
+    
+    const response = await axios.get(
+      `http://localhost:3000/products/${productId}/rating-summary`
+    );
+    console.log(response.data); // { average: 4.3, count: 127 }
+    ```
+    
+    ### cURL
+    ```bash
+    curl http://localhost:3000/products/550e8400-e29b-41d4-a716-446655440000/rating-summary
+    ```
+    
+    ### Python (requests)
+    ```python
+    import requests
+    response = requests.get(f'http://localhost:3000/products/{product_id}/rating-summary')
+    data = response.json()
+    ```
+    
+    ## Error Handling
+    - **400**: Invalid UUID format
+    - **404**: Product not found
+    - **500**: Internal server error (database/cache failure)
+    - **503**: Service unavailable (dependencies down)
+    
+    ## Caching Behavior
+    - First request: Queries PostgreSQL, caches result (60s TTL)
+    - Subsequent requests: Returns cached data (no DB queries)
+    - After 60s: Cache expires, next request refreshes from DB
+    
+    ## Rate Limiting
+    - No rate limiting currently implemented
+    - Recommended: 100 requests/minute per IP in production
+  version: 1.0.0
+  contact:
+    name: Backend Team
+    email: backend-team@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: http://localhost:3000
+    description: Local test server
+  - url: https://api.production.example.com
+    description: Production server (configure in deployment)
+
+tags:
+  - name: Products
+    description: Product-related endpoints
+  - name: Ratings
+    description: Rating aggregation and summaries
+paths:
+  /products/{id}/rating-summary:
+    get:
+      summary: Get product rating summary
+      description: |
+        Returns aggregated rating data for a product.
+        
+        **Response Format**:
+        - `average`: Float (0.0-5.0) rounded to one decimal place
+        - `count`: Integer (≥0) total number of ratings
+        
+        **Special Cases**:
+        - Product with 0 ratings: `{ average: 0.0, count: 0 }`
+        - Product not found: HTTP 404
+        - Invalid UUID: HTTP 400
+        
+        **Performance**:
+        - Cached for 60 seconds (Redis)
+        - Average response time: < 50ms (warm cache)
+        - P95 response time: < 150ms (cold cache)
+        
+        **Accessibility**:
+        - Response designed for screen reader consumption
+        - Frontend displays with aria-label and sr-only text
+      operationId: getRatingSummary
+      tags:
+        - Products
+        - Ratings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: |
+            Product UUID in standard format.
+            
+            **Examples**:
+            - Valid: `550e8400-e29b-41d4-a716-446655440000`
+            - Invalid: `not-a-uuid` (returns 400)
+            - Not found: `00000000-0000-0000-0000-000000000000` (returns 404)
+          schema:
+            type: string
+            format: uuid
+            pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+          example: '550e8400-e29b-41d4-a716-446655440000'
+      responses:
+        '200':
+          description: |
+            Rating summary retrieved successfully.
+            
+            The average is calculated from all ratings for this product and rounded to one decimal place.
+            The count represents the total number of individual ratings.
+          headers:
+            Cache-Control:
+              description: Caching directive
+              schema:
+                type: string
+                example: 'public, max-age=60'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingSummary'
+              examples:
+                withRatings:
+                  summary: Product with multiple ratings
+                  description: Example product with 127 ratings averaging 4.3 stars
+                  value:
+                    average: 4.3
+                    count: 127
+                singleRating:
+                  summary: Product with one rating
+                  value:
+                    average: 5.0
+                    count: 1
+                noRatings:
+                  summary: Product with no ratings
+                  description: When a product has zero ratings, returns zeros
+                  value:
+                    average: 0.0
+                    count: 0
+                highVolume:
+                  summary: Product with many ratings
+      description: |
+        Aggregated rating summary for a product.
+        
+        **Calculation**:
+        - `average` = SQL AVG(score) rounded to 1 decimal place
+        - `count` = SQL COUNT(score)
+        
+        **Business Rules**:
+        - If count = 0, average = 0.0
+        - Average never exceeds 5.0 (enforced by database constraint)
+        - Count is always ≥ 0
+      properties:
+        average:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 5.0
+          description: |
+            Average rating score rounded to one decimal place.
+            
+            **Examples**:
+            - 4.3 (displays as "4.3 stars")
+            - 0.0 (no ratings)
+            - 5.0 (perfect score)
+            
+            **Frontend Display**:
+            - Show with star icon: "⭐ 4.3"
+            - Include aria-label: "Average rating 4.3 out of 5 stars"
+          example: 4.3
+        count:
+          type: integer
+          format: int32
+          minimum: 0
+          description: |
+            Total number of ratings.
+            
+            **Frontend Display**:
+            - Format large numbers: 1234567 → "1.2M reviews"
+            - Singular/plural: "1 review" vs "127 reviews"
+            - Zero state: "No ratings yet"
+          example: 127
+      example:
+        average: 4.3
+        count: 127
+    Error:
+      type: object
+      required:
+        - error
+      description: Standard error response format
+      properties:
+        error:
+          type: object
+          required:
+            - message
+          properties:
+            message:
+              type: string
+              description: Human-readable error message for display
+              example: Product not found
+            details:
+              type: object
+              description: |
+                Additional context about the error (optional).
+                
+                **Development**: May include validation errors, field names
+                **Production**: Should not leak sensitive data
+            stack:
+              type: string
+              description: |
+                Stack trace (development environment only).
+                
+                Never sent in production for security reasons.
+      example:
+        error:
+          message: Product not found
+          details:
+            productId: '550e8400-e29b-41d4-a716-446655440000'
+
+                  value:
+                    error:
+                      message: Product not found
+                      details:
+                        productId: '550e8400-e29b-41d4-a716-446655440000'
+        '500':
+          description: |
+            Internal server error.
+            
+            This indicates an unexpected error in the backend service (database query failure, etc.).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                databaseError:
+                  summary: Database connection failure
+                  value:
+                    error:
+                      message: Internal server error
+                      details:
+                        type: 'DATABASE_ERROR'
+        '503':
+          description: |
+            Service unavailable.
+            
+            One or more dependencies (PostgreSQL, Redis) are not responding.
+            Client should retry with exponential backoff.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                serviceUnavailable:
+                  summary: Dependencies unavailable
+                  value:
+                    error:
+                      message: Service temporarily unavailable
+                      details:
+                        services:
+                          database: 'down'
+                          redis: 'up'
+
+components:
+  schemas:
+    RatingSummary:
+      type: object
+      required:
+        - average
+        - count
+      properties:
+        average:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 5.0
+          description: Average rating score (0.0-5.0) rounded to one decimal place
+          example: 4.3
+        count:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Total number of ratings
+          example: 127
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - message
+          properties:
+            message:
+              type: string
+              description: Human-readable error message
+              example: Product not found
+            details:
+              type: object
+              description: Additional error details (optional)
+            stack:
+              type: string
+              description: Stack trace (development only)

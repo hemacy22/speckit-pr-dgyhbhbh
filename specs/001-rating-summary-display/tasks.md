@@ -23,18 +23,18 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create backend directory structure: backend/src/{models,services,api,config}, backend/tests/{unit,contract,integration}
-- [ ] T002 Create frontend directory structure: frontend/src/{components,services,types}, frontend/tests/e2e
-- [ ] T003 [P] Initialize backend: create backend/package.json with Express, Prisma, ioredis, TypeScript dependencies
-- [ ] T004 [P] Initialize frontend: create frontend/package.json with React, Vite, TypeScript, axios, @axe-core/react dependencies
-- [ ] T005 [P] Create backend/tsconfig.json with Node.js/ES2020 target and strict mode enabled
-- [ ] T006 [P] Create frontend/tsconfig.json with DOM lib and JSX support
-- [ ] T007 [P] Create frontend/vite.config.ts with React plugin configuration
-- [ ] T008 [P] Create backend/jest.config.js for unit and integration testing
-- [ ] T009 [P] Create frontend/jest.config.js for component testing with React Testing Library
-- [ ] T010 Create docker-compose.yml with PostgreSQL 15 and Redis 7 services for local development
-- [ ] T011 Create .env.example with DATABASE_URL, REDIS_URL, PORT, NODE_ENV placeholders
-- [ ] T012 Create .gitignore for node_modules, .env, dist, coverage, and build artifacts
+- [X] T001 Create backend directory structure: backend/src/{models,services,api,config}, backend/tests/{unit,contract,integration}
+- [X] T002 Create frontend directory structure: frontend/src/{components,services,types}, frontend/tests/e2e
+- [X] T003 [P] Initialize backend: create backend/package.json with Express, Prisma, ioredis, TypeScript dependencies
+- [X] T004 [P] Initialize frontend: create frontend/package.json with React, Vite, TypeScript, axios, @axe-core/react dependencies
+- [X] T005 [P] Create backend/tsconfig.json with Node.js/ES2020 target and strict mode enabled
+- [X] T006 [P] Create frontend/tsconfig.json with DOM lib and JSX support
+- [X] T007 [P] Create frontend/vite.config.ts with React plugin configuration
+- [X] T008 [P] Create backend/jest.config.js for unit and integration testing
+- [X] T009 [P] Create frontend/jest.config.js for component testing with React Testing Library
+- [X] T010 Create docker-compose.yml with PostgreSQL 15 and Redis 7 services for local development
+- [X] T011 Create .env.example with DATABASE_URL, REDIS_URL, PORT, NODE_ENV placeholders
+- [X] T012 Create .gitignore for node_modules, .env, dist, coverage, and build artifacts
 
 ---
 
@@ -44,18 +44,18 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T013 Define Prisma schema in backend/src/models/schema.prisma with Product model (id UUID, title String, timestamps)
-- [ ] T014 Add Rating model to backend/src/models/schema.prisma (id UUID, productId FK, score Float 1-5, timestamps, index on productId)
+- [X] T013 Define Prisma schema in backend/src/models/schema.prisma with Product model (id UUID, title String, timestamps)
+- [X] T014 Add Rating model to backend/src/models/schema.prisma (id UUID, productId FK, score Float 1-5, timestamps, index on productId)
 - [ ] T015 Generate initial Prisma migration with: npx prisma migrate dev --name add-products-ratings-tables
-- [ ] T016 Create seed script in backend/prisma/seed.ts with sample products and ratings for testing (0 ratings, 1 rating, 100+ ratings)
-- [ ] T017 [P] Implement database config in backend/src/config/database.config.ts initializing Prisma client with connection pooling
-- [ ] T018 [P] Implement Redis config in backend/src/config/redis.config.ts creating ioredis client with error handling
-- [ ] T019 [P] Implement environment config in backend/src/config/env.config.ts loading and validating environment variables
-- [ ] T020 Implement cache service in backend/src/services/cache.service.ts with get(key), set(key, value, ttl), del(key) methods
-- [ ] T021 Create Express app setup in backend/src/server.ts with middleware (json parser, CORS), error handling, and health check endpoint
-- [ ] T022 Create error handler middleware in backend/src/api/middleware/error-handler.middleware.ts formatting 4xx/5xx responses
-- [ ] T023 [P] Create base API types in frontend/src/types/api.types.ts with ApiResponse, ApiError interfaces
-- [ ] T024 [P] Create ErrorBoundary component in frontend/src/components/ErrorBoundary/ErrorBoundary.tsx for React error catching
+- [X] T016 Create seed script in backend/prisma/seed.ts with sample products and ratings for testing (0 ratings, 1 rating, 100+ ratings)
+- [X] T017 [P] Implement database config in backend/src/config/database.config.ts initializing Prisma client with connection pooling
+- [X] T018 [P] Implement Redis config in backend/src/config/redis.config.ts creating ioredis client with error handling
+- [X] T019 [P] Implement environment config in backend/src/config/env.config.ts loading and validating environment variables
+- [X] T020 Implement cache service in backend/src/services/cache.service.ts with get(key), set(key, value, ttl), del(key) methods
+- [X] T021 Create Express app setup in backend/src/server.ts with middleware (json parser, CORS), error handling, and health check endpoint
+- [X] T022 Create error handler middleware in backend/src/api/middleware/error-handler.middleware.ts formatting 4xx/5xx responses
+- [X] T023 [P] Create base API types in frontend/src/types/api.types.ts with ApiResponse, ApiError interfaces
+- [X] T024 [P] Create ErrorBoundary component in frontend/src/components/ErrorBoundary/ErrorBoundary.tsx for React error catching
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -69,35 +69,35 @@
 
 ### Backend Implementation for User Story 1
 
-- [ ] T025 [P] [US1] Create RatingSummary type in backend/src/types/rating.types.ts with average: number, count: number interface
-- [ ] T026 [US1] Implement getRatingSummary method in backend/src/services/rating-summary.service.ts:
+- [X] T025 [P] [US1] Create RatingSummary type in backend/src/types/rating.types.ts with average: number, count: number interface
+- [X] T026 [US1] Implement getRatingSummary method in backend/src/services/rating-summary.service.ts:
   - Check Redis cache for key `rating-summary:{productId}`
   - On cache miss: query Prisma aggregation (_avg.score, _count.score) on Rating where productId
   - Return { average: 0, count: 0 } if no ratings exist
   - Cache result with 60s TTL before returning
   - Handle database errors with appropriate exceptions
-- [ ] T027 [US1] Create rating summary controller in backend/src/api/controllers/rating-summary.controller.ts:
+- [X] T027 [US1] Create rating summary controller in backend/src/api/controllers/rating-summary.controller.ts:
   - Extract productId from request params
   - Call rating-summary.service.getRatingSummary
   - Return 200 with { average, count } JSON response
   - Handle 404 for invalid product, 500 for service errors, 503 for cache/DB unavailable
-- [ ] T028 [US1] Add GET /products/:id/rating-summary route in backend/src/api/routes/products.routes.ts mapping to rating-summary.controller
-- [ ] T029 [US1] Create OpenAPI spec in backend/openapi/rating-summary-api.yaml:
+- [X] T028 [US1] Add GET /products/:id/rating-summary route in backend/src/api/routes/products.routes.ts mapping to rating-summary.controller
+- [X] T029 [US1] Create OpenAPI spec in backend/openapi/rating-summary-api.yaml:
   - Define GET /products/{id}/rating-summary endpoint
   - Path parameter: id (string, UUID format)
   - Response 200 schema: { average: number (0.0-5.0), count: integer (≥0) }
   - Error responses: 400, 404, 500, 503 with error message schemas
-- [ ] T030 [US1] Implement OpenAPI validator middleware in backend/src/api/middleware/openapi-validator.middleware.ts using express-openapi-validator library pointing to backend/openapi/rating-summary-api.yaml
-- [ ] T031 [US1] Register OpenAPI validator and products routes in backend/src/server.ts with app.use()
+- [X] T030 [US1] Implement OpenAPI validator middleware in backend/src/api/middleware/openapi-validator.middleware.ts using express-openapi-validator library pointing to backend/openapi/rating-summary-api.yaml
+- [X] T031 [US1] Register OpenAPI validator and products routes in backend/src/server.ts with app.use()
 
 ### Frontend Implementation for User Story 1
 
-- [ ] T032 [P] [US1] Create RatingSummary types in frontend/src/types/rating.types.ts with RatingSummaryResponse, RatingSummaryProps interfaces
-- [ ] T033 [P] [US1] Implement fetchRatingSummary API service in frontend/src/services/rating-api.service.ts:
+- [X] T032 [P] [US1] Create RatingSummary types in frontend/src/types/rating.types.ts with RatingSummaryResponse, RatingSummaryProps interfaces
+- [X] T033 [P] [US1] Implement fetchRatingSummary API service in frontend/src/services/rating-api.service.ts:
   - Use axios.get to call /products/{productId}/rating-summary
   - Return typed RatingSummaryResponse
   - Handle network errors and timeout (5s)
-- [ ] T034 [US1] Create RatingSummary component in frontend/src/components/RatingSummary/RatingSummary.tsx:
+- [X] T034 [US1] Create RatingSummary component in frontend/src/components/RatingSummary/RatingSummary.tsx:
   - Accept productId prop
   - useState for data/loading/error states
   - useEffect to fetch on productId change via rating-api.service
@@ -105,42 +105,42 @@
   - Include visible labels: "Rating: X.X (N reviews)"
   - Include aria-label: "Average rating X.X out of 5 stars based on N customer ratings"
   - Include sr-only span with full descriptive text for screen readers
-- [ ] T035 [US1] Create styles in frontend/src/components/RatingSummary/RatingSummary.module.css:
+- [X] T035 [US1] Create styles in frontend/src/components/RatingSummary/RatingSummary.module.css:
   - .container: flexbox layout, responsive spacing
   - .rating, .count: typography styles with sufficient color contrast (4.5:1 minimum for WCAG AA)
   - .sr-only: position absolute, width 1px, height 1px, overflow hidden (visually hidden, screen-reader accessible)
   - .loading, .error: appropriate state styling
   - Media queries for mobile/tablet/desktop responsiveness
-- [ ] T036 [US1] Create index export in frontend/src/components/RatingSummary/index.ts exporting RatingSummary component
+- [X] T036 [US1] Create index export in frontend/src/components/RatingSummary/index.ts exporting RatingSummary component
 
 ### Testing for User Story 1
 
-- [ ] T037 [P] [US1] Unit test cache service in backend/tests/unit/cache.service.test.ts:
+- [X] T037 [P] [US1] Unit test cache service in backend/tests/unit/cache.service.test.ts:
   - Mock ioredis client
   - Test get() returns cached value
   - Test set() stores value with TTL
   - Test del() removes key
   - Test Redis connection error handling
-- [ ] T038 [P] [US1] Unit test rating summary service in backend/tests/unit/rating-summary.service.test.ts:
+- [X] T038 [P] [US1] Unit test rating summary service in backend/tests/unit/rating-summary.service.test.ts:
   - Mock Prisma client and cache service
   - Test cache hit scenario returns cached data without DB query
   - Test cache miss scenario queries DB, caches result, returns data
   - Test zero ratings returns { average: 0, count: 0 }
   - Test database error throws appropriate exception
   - Test average is rounded to 1 decimal place
-- [ ] T039 [US1] Contract test in backend/tests/contract/rating-summary-contract.test.ts:
+- [X] T039 [US1] Contract test in backend/tests/contract/rating-summary-contract.test.ts:
   - Use Supertest to call GET /products/{validId}/rating-summary
   - Validate response schema matches OpenAPI spec (average: number 0-5, count: integer ≥0)
   - Test 404 response for invalid product ID
   - Test 400 response for malformed product ID
-- [ ] T040 [US1] Integration test in backend/tests/integration/rating-summary-integration.test.ts:
+- [X] T040 [US1] Integration test in backend/tests/integration/rating-summary-integration.test.ts:
   - Start test database with seed data
   - Test full request/response cycle for product with ratings
   - Test cache population: first request hits DB, second request hits cache
   - Test cache expiry: verify TTL of 60s invalidates cache
   - Test product with zero ratings returns { average: 0, count: 0 }
   - Test 404 for non-existent product
-- [ ] T041 [P] [US1] Component unit test in frontend/src/components/RatingSummary/RatingSummary.test.tsx:
+- [X] T041 [P] [US1] Component unit test in frontend/src/components/RatingSummary/RatingSummary.test.tsx:
   - Mock rating-api.service.fetchRatingSummary
   - Test loading state renders spinner
   - Test successful data display: average (1 decimal) and count visible
@@ -149,12 +149,12 @@
   - Test aria-label is present with correct format
   - Test sr-only span contains descriptive text for screen readers
   - Test large numbers formatted correctly (e.g., "1.2M ratings")
-- [ ] T042 [US1] Accessibility test in frontend/src/components/RatingSummary/RatingSummary.test.tsx:
+- [X] T042 [US1] Accessibility test in frontend/src/components/RatingSummary/RatingSummary.test.tsx:
   - Use @axe-core/react to run axe checks on rendered RatingSummary component
   - Assert zero critical or serious violations (WCAG 2.2 Level AA)
   - Test color contrast meets 4.5:1 minimum ratio
   - Verify screen reader can access all content via sr-only text
-- [ ] T043 [US1] E2E test in frontend/tests/e2e/rating-summary.e2e.test.ts using Playwright:
+- [X] T043 [US1] E2E test in frontend/tests/e2e/rating-summary.e2e.test.ts using Playwright:
   - Navigate to product page with ratings
   - Verify rating summary is visible near product title
   - Verify average and count display correctly
@@ -170,9 +170,9 @@
 
 **Purpose**: Finalize infrastructure, documentation, and deployment readiness
 
-- [ ] T044 [P] Create CODEOWNERS file in .github/CODEOWNERS assigning backend/ to backend team, frontend/ to frontend team
-- [ ] T045 [P] Create README.md with project setup instructions, environment configuration, running tests locally, docker-compose usage
-- [ ] T046 Create GitHub Actions CI workflow in .github/workflows/ci.yml:
+- [X] T044 [P] Create CODEOWNERS file in .github/CODEOWNERS assigning backend/ to backend team, frontend/ to frontend team
+- [X] T045 [P] Create README.md with project setup instructions, environment configuration, running tests locally, docker-compose usage
+- [X] T046 Create GitHub Actions CI workflow in .github/workflows/ci.yml:
   - Job 1: Backend unit tests (Jest, 80% coverage requirement)
   - Job 2: Backend contract tests (OpenAPI compliance)
   - Job 3: Backend integration tests (with Postgres/Redis test containers)
@@ -183,17 +183,17 @@
   - Job 8: CodeQL security scan (no new high/critical issues)
   - Configure least-privilege permissions: contents: read, checks: write
   - Require all jobs pass before merge
-- [ ] T047 [P] Add performance test in backend/tests/integration/rating-summary.performance.test.ts:
+- [X] T047 [P] Add performance test in backend/tests/integration/rating-summary.performance.test.ts:
   - Use autocannon or similar to send 100 concurrent requests
   - Measure P95 response time with warm cache
   - Assert P95 < 150ms (constitution requirement)
-- [ ] T048 [P] Add monitoring placeholders in backend/src/server.ts:
+- [X] T048 [P] Add monitoring placeholders in backend/src/server.ts:
   - Response time logging middleware
   - Error rate tracking
   - Cache hit rate metrics
   - Comments for production APM integration (Datadog, New Relic, etc.)
-- [ ] T049 Document API contract in backend/openapi/rating-summary-api.yaml with usage examples and full error response documentation
-- [ ] T050 Final validation: Run all tests locally, verify docker-compose up works, ensure .env.example is complete
+- [X] T049 Document API contract in backend/openapi/rating-summary-api.yaml with usage examples and full error response documentation
+- [X] T050 Final validation: Run all tests locally, verify docker-compose up works, ensure .env.example is complete
 
 ---
 
